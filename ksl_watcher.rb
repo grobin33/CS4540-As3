@@ -31,14 +31,11 @@ class WebServer
   # this will be the port that the server listens on
   PORT_NUMBER = 2345
 
-  # a file where we will write the signup data to
-  DATA_FILE = 'signups.txt'
-
-
   # initialize is the Ruby class constructor name
   def initialize(port=PORT_NUMBER)
     # moving the TCPServer spin up to listen 
     @port = port
+    self
   end
 
   # listen is a method that does just that...listens on the
@@ -47,7 +44,7 @@ class WebServer
     @server = TCPServer.new('localhost', @port)
     # so, now we have a tcp server object stuffed in @server
     # let the user know the system is running
-    puts "Listening on port #{PORT_NUMBER}..."
+    puts "Listening on port #{@port}..."
 
     # we need an infinite loop here...there are tons of ways to
     # do that in Ruby.  Here's one:
@@ -73,8 +70,6 @@ class WebServer
     # instantiate an empty hash
     @request = {}
 
-    body_byte_count = 0
-
     @socket = @server.accept  # blocks here
     # collect request lines until we hit a blank line
     temp_request_lines = []
@@ -85,15 +80,6 @@ class WebServer
       else
         temp_request_lines << temp_line
       end
-      if (md = temp_line.match(/Content-Length: (\d+)/))
-        # there's going to be a body at the tail end of the
-        # request...remember how many bytes we need to read
-        body_byte_count = md[1].to_i
-      end
-    end
-
-    if body_byte_count > 0
-      @request[:body] = CGI::parse(@socket.read(body_byte_count))
     end
 
     # parse the request
@@ -115,25 +101,27 @@ class WebServer
   # Assumptions:  @request is populated
   # Side effects:  creates/populates @response (a hash)
   def route_request
-    # route the request
-    case @request[:path]
-    
-    when '/', '/index.html', 'index'
-      @response = handle_index
-    
-    when /^\/signup/
-      if @request[:type] == 'GET'
+    begin    
+      # route the request
+      case @request[:path]
+      
+      when '/', '/index.html', 'index'
+        @response = handle_index
+      
+      when /^\/signup/
         @response = handle_signup_get
-      elsif @request[:type] == 'POST'
-        @response = handle_signup_post
-      else
-        @response = handle_file_not_found  
-      end
 
-    when /ksl_watcher.css/
-      @response = handle_css
-    else
-      @response = handle_file_not_found
+      when /ksl_watcher.css/
+        @response = handle_css
+      else
+        @response = handle_file_not_found
+      end
+    rescue StandardError => e
+      # something happened when trying to find
+      # the targeted files (which will happen when
+      # you don't have them all defined).  in that
+      # case, default to a basic error page.
+      @response = handle_other_error(e.message, e.backtrace.join("\n"))
     end
   end
 
@@ -150,7 +138,6 @@ class WebServer
     #  }
 
     # I'm using the lecture notes describing an HTTP Response...
-
     # the header line
     status_line = "HTTP/1.1 #{@response[:status]} #{@response[:reason]}\r\n"
 
@@ -212,7 +199,7 @@ class WebServer
   # 1. the keys and values are delimited by a colon, 
   # 2. the key/value pairs are delimited by a CRLF combo. 
   def reformat_hash_to_string(h)
-    h.to_a.map{ |x| "#{x[0]}: #{x[1]}" }.join("\r\n")
+    h.to_a.map { |x| "#{x[0]}: #{x[1]}" }.join("\r\n")
   end
 
   def handle_index
@@ -231,8 +218,8 @@ class WebServer
     get_html_file('pages/404.html')
   end
 
-  def handle_other_error
-    { status: 400, reason: 'bad request - unknown error' }
+  def handle_other_error(msg = 'bad request - unknown error', body = '')
+    { status: 400, reason: msg, body: body }
   end
 
   def handle_missing_values
@@ -243,7 +230,9 @@ class WebServer
   # given a file of html (or css) and a content_type that defaults to text/html.
   def get_html_file(fname, content_type = 'text/html')
     html = File.open(fname).readlines
-    { status: 200, headers: { 'Content-Type' => content_type }, body: html.join("\n")}
+    { status: 200, 
+      headers: { 'Content-Type' => content_type },
+      body: html.join("\n") }
   end
 end
 
