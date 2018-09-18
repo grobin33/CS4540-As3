@@ -23,7 +23,6 @@ class WebServerTest < Minitest::Test
   def test_index_html
     res = Net::HTTP.get(URL, '/index.html', PORT)
     res = res.split.join(' ')
-
     # requested content
     assert(res.include?('Welcome to the KSLWatcher!'))
     assert(res.include?('This service will keep an eye on the KSL Classifieds for you and alert you when a new listing of interest appears.'))
