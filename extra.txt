@@ -1,0 +1,4 @@
+For my extra feature I decided to add extra styling using Bootstrap. 
+I used it to format the layout of both index.html, and signup.html.
+The form in signup.html is also styled using the form classes available
+in bootstrap.
