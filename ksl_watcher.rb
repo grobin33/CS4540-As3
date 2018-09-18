@@ -101,11 +101,11 @@ class WebServer
   # Assumptions:  @request is populated
   # Side effects:  creates/populates @response (a hash)
   def route_request
+    print @request[:path] + "\n"
     begin    
       # route the request
       case @request[:path]
-      
-      when '/', '/index.html', 'index'
+      when /^\/index/, '/', '/index.html', 'index'
         @response = handle_index
       
       when /^\/signup/
